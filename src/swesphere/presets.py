@@ -1,20 +1,23 @@
 # -*- coding: utf-8 -*-
-"""Named configurations whose behaviour is documented and tested (Sept 2026).
+"""Named configurations. The numbers that characterize each one are measured by the experiments
+(``results/EXP-01/stability.csv``, ``results/EXP-02/regimes.csv``, ``results/EXP-03/footprint.csv``)
+for the default ``dt = 120 s`` with the filter every 3 steps; they change with the filter cadence.
 
 ``waves``
-    Rossby-Haurwitz initial condition, RK4, no forcing. The initial eddies
-    decay in ~40 days and a stationary zonal state with weak Rossby waves
-    remains (h std ~380 m, eddy std ~20 m, |U| ~36 m/s). Advection strong,
-    error growth slow. Spin-up 40 days; climatology snapshots every 3 days
-    are decorrelated (corr 0.13).
+    Solid-body rotation (Williamson test case 2) plus a wavenumber-4 wave packet in the north and a
+    wavenumber-3 packet in the south, RK4, no forcing. The initial eddies decay in ~40 days and zonal
+    flow with weak Rossby waves remains. With no source of energy the waves keep decaying slowly (the
+    spectral filter is the only sink): the regime is quasi-linear and slowly decaying, not stationary.
+    Spin-up 40 days; snapshots every 3 days.
+
+``one_jet``
+    Galewsky jet at 45 N, RK4, relaxation of the zonal mean (tau = 5 d) toward the jet. Sustained and
+    fairly regular eddies in the north, the south quiescent. Spin-up 40 days; snapshots every 2 days.
 
 ``two_jets``
-    Galewsky jets at +-45 deg, RK4, zonal relaxation (tau = 5 d) toward the
-    jets. Barotropic instability sustains irregular eddies: h anomaly std
-    ~130-160 m, |U|max ~70 m/s, stationary from day 30. Advection strong,
-    error large and advected (a balanced perturbation travels with the mean
-    wind: 8.7 cells in 24 h against 9.1 by pure advection). Spin-up 40 days;
-    snapshots every 2 days (corr 0.58).
+    Galewsky jets at +-45 deg, same relaxation. Barotropic instability sustains irregular eddies in both
+    hemispheres: a stationary turbulent regime in which balanced perturbations travel with the mean wind
+    (EXP-03). Spin-up 40 days; snapshots every 2 days.
 """
 from __future__ import annotations
 
@@ -30,8 +33,8 @@ def waves(**overrides) -> SWEModel:
 
 
 def one_jet(tau_days: float = 5.0, h0: float = 10000.0, **overrides):
-    """Galewsky jet in the north only: sustained but fairly regular eddies (wavenumber ~6,
-    eddy std ~110 m), the southern hemisphere quiescent. Returns ``(model, x0)``."""
+    """Galewsky jet in the north only: sustained, fairly regular eddies; the southern hemisphere quiescent.
+    Returns ``(model, x0)``."""
     return _jets(False, tau_days, h0, **overrides)
 
 

@@ -1,16 +1,13 @@
 # -*- coding: utf-8 -*-
 """Forcing that gives the model a stationary turbulent regime.
 
-Without forcing the barotropic shallow-water equations on the sphere do not
-sustain eddies: the filter dissipates whatever the initial condition put in
-and the flow relaxes to a zonal state with weak waves (measured: eddy std of
-h from 80 m to 21 m in 60 days, for any filter strength). ``ZonalRelaxation``
-relaxes only the zonal mean of (u, v, h) toward a reference jet, leaving the
-eddies alone; with a barotropically unstable reference (Galewsky) the
-instability regenerates eddies against the dissipation and the flow reaches
-a stationary turbulent state (measured: eddy std of h 150-160 m, |U|max
-70 m/s, stationary from day 30 with tau = 5 days). Relaxing the full fields
-toward the zonal state kills the eddies instead (measured: to 0 m in 20 days).
+Without forcing the shallow-water equations on the sphere do not sustain eddies: the filter dissipates
+whatever the initial condition put in and the flow relaxes toward a zonal state with weak, slowly
+decaying waves (the ``waves`` preset). ``ZonalRelaxation`` relaxes only the zonal mean of (u, v, h)
+toward a reference jet and leaves the eddies alone; with a barotropically unstable reference
+(Galewsky) the instability regenerates eddies against the dissipation and the flow reaches a
+stationary turbulent state (EXP-02 measures its statistics). Relaxing the full fields toward the
+zonal state kills the eddies instead.
 """
 from __future__ import annotations
 

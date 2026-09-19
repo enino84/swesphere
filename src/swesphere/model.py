@@ -78,7 +78,10 @@ class SWEModel:
     # ---- initial conditions
     def initial_condition(self, kind: str = "rossby", seed: int = 0, **kw):
         if kind == "rossby":
-            u, v, h = ics.default_ic(self.grid, **kw) if not kw.get("perturbed") else ics.perturbed_ic(self.grid, seed=seed, **kw)
+            perturbed = kw.pop("perturbed", False)
+            u, v, h = ics.perturbed_ic(self.grid, seed=seed, **kw) if perturbed else ics.default_ic(self.grid, **kw)
+        elif kind == "tc2":
+            u, v, h = ics.williamson_tc2(self.grid, **kw)
         elif kind == "galewsky":
             u, v, h = ics.galewsky_jet(self.grid, **kw)
         else:

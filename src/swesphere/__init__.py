@@ -7,7 +7,7 @@
 from .model import SWEModel
 from .grid import SphereGrid
 from .forcing import ZonalRelaxation
-from . import presets, climatology, initial_conditions, integrators, dynamics
+from . import presets, climatology, initial_conditions, integrators, dynamics, diagnostics
 
-__version__ = "0.1.0"
-__all__ = ["SWEModel", "SphereGrid", "ZonalRelaxation", "presets", "climatology", "initial_conditions", "integrators", "dynamics", "__version__"]
+__version__ = "0.2.0"
+__all__ = ["SWEModel", "SphereGrid", "ZonalRelaxation", "presets", "climatology", "initial_conditions", "integrators", "dynamics", "diagnostics", "__version__"]

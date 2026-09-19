@@ -12,13 +12,18 @@ Equations (Hack & Jakob 1992 form)
 ----------------------------------
     ∂u/∂t = η v − (1 / a cosφ) ∂B/∂λ
     ∂v/∂t = −η u − (1 / a) ∂B/∂φ
-    ∂h/∂t = −h δ
+    ∂h/∂t = −∇·(h V) = −(1 / a cosφ) [∂(h u)/∂λ + ∂(h v cosφ)/∂φ]
 
 where:
     ζ = (1 / a cosφ) ∂v/∂λ − (1/a) ∂u/∂φ + (tanφ/a) u    (relative vorticity)
     η = ζ + f                                            (absolute vorticity)
     B = g h + ½(u² + v²)                                 (Bernoulli potential)
-    δ = (1 / a cosφ) ∂u/∂λ + (1 / a cosφ) ∂(v cosφ)/∂φ   (divergence)
+    δ = (1 / a cosφ) ∂u/∂λ + (1 / a cosφ) ∂(v cosφ)/∂φ   (divergence, diagnostic only)
+
+The continuity equation is discretized in flux form, so the zonal FFT derivative and
+the centered meridional difference telescope and the global mass changes only through
+the spectral filter and the polar rows. (Versions before 0.2.0 used ``dh = -h δ`` and
+omitted the advection of ``h``; see CHANGELOG.md.)
 """
 
 from __future__ import annotations
@@ -51,14 +56,10 @@ def rhs(
     # Bernoulli potential
     B = grid.g * h + 0.5 * (u ** 2 + v ** 2)
 
-    # Horizontal divergence δ
-    div = (d_lon(u, grid) / (a * cos)
-           + d_lat(v * grid.cosL, grid) / (a * cos))
-
-    # Tendencies
+    # Tendencies: vector-invariant momentum, flux-form continuity
     du = eta * v - d_lon(B, grid) / (a * cos)
     dv = -eta * u - d_lat(B, grid) / a
-    dh = -h * div
+    dh = -(d_lon(h * u, grid) + d_lat(h * v * grid.cosL, grid)) / (a * cos)
 
     return du, dv, dh
 
@@ -80,3 +81,8 @@ def divergence(u: np.ndarray, v: np.ndarray,
     a = grid.a
     return (d_lon(u, grid) / (a * cos)
             + d_lat(v * grid.cosL, grid) / (a * cos))
+
+
+def divergence(u: np.ndarray, v: np.ndarray, grid: SphereGrid) -> np.ndarray:
+    """Diagnostic: horizontal divergence δ from (u, v)."""
+    return (d_lon(u, grid) + d_lat(v * grid.cosL, grid)) / (grid.a * grid.cos_safe)

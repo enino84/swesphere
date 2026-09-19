@@ -1,16 +1,19 @@
 # swesphere: the experiments of the model paper.
-#   docker compose build test                # build the image once
-#   QUICK=1 docker compose run --rm all      # smoke (~3 min)
-#   docker compose run --rm all              # full (~3 h, one core)
-# or one at a time: stability, regimes, footprint, figures
+#   docker compose build test                 # build the image once (rebuild after any change to src/ or experiments/)
+#   docker compose run --rm test              # unit tests (~1 min)
+#   QUICK=1 docker compose run --rm all       # smoke (~8 min)
+#   docker compose run --rm all               # full (~4.5 h on one core)
+# or one at a time, detached:  docker compose run -d verification | stability | regimes ; then footprint ; then figures
+#   (verification, stability and regimes are independent; footprint needs regimes; figures needs all of them)
 x-common: &common
   image: swesphere:latest
   volumes: ["./results:/work/results"]
   environment: {QUICK: "${QUICK:-0}", OMP_NUM_THREADS: "1"}
 services:
-  test:      {<<: *common, build: ., command: python -m pytest tests -q}
-  stability: {<<: *common, command: python experiments/exp01_stability.py}
-  regimes:   {<<: *common, command: python experiments/exp02_regimes.py}
-  footprint: {<<: *common, command: python experiments/exp03_footprint.py}
-  figures:   {<<: *common, command: python figures/make_figures.py}
-  all:       {<<: *common, command: bash experiments/run_all.sh}
+  test:         {<<: *common, build: ., command: python -m pytest tests -q}
+  verification: {<<: *common, command: python experiments/exp00_verification.py}
+  stability:    {<<: *common, command: python experiments/exp01_stability.py}
+  regimes:      {<<: *common, command: python experiments/exp02_regimes.py}
+  footprint:    {<<: *common, command: python experiments/exp03_footprint.py}
+  figures:      {<<: *common, command: python figures/make_figures.py}
+  all:          {<<: *common, command: bash experiments/run_all.sh}

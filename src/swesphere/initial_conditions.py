@@ -98,17 +98,17 @@ def perturbed_ic(
     H0: float = 2800.0,
     pert_strength: float = 0.05,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Default IC with a small random perturbation, used to seed
-    background ensemble members.
+    """Default IC plus a small random perturbation of ``u`` and ``h`` at zonal wavenumbers 1-8,
+    confined to low and middle latitudes, to start runs from different states.
 
-    The perturbation is added in spectral space at low wavenumbers only,
-    so the ensemble member starts on the slow manifold (no fast gravity
-    waves spuriously excited at t=0).
+    The perturbations of ``u`` and ``h`` have independent phases, so they are not in geostrophic
+    balance: they excite weak gravity waves that the model radiates and filters within a few days.
+    Use a spin-up before sampling.
     """
     u, v, h = default_ic(grid, U0=U0, H0=H0)
     rng = np.random.default_rng(seed)
 
-    # Low-wavenumber random perturbation (zonal-only for simplicity).
+    # Low zonal wavenumbers, gaussian envelope in latitude.
     Nlon = grid.Nlon
     n_modes = 8
     for k in range(1, n_modes + 1):
@@ -133,8 +133,7 @@ def galewsky_jet(grid: SphereGrid, umax: float = 80.0, phi0_deg: float = 25.7, p
     Returns ``(u, v, h)`` on the grid. With ``both_hemispheres`` a mirror jet
     (also westerly) is placed in the south so the whole sphere is active; the
     two hemispheres perturb each other across the equator and the resulting
-    turbulence is irregular (measured: sustained eddies of ~160 m in h with
-    the zonal relaxation of :mod:`swesphere.forcing`).
+    turbulence is irregular (with the zonal relaxation of :mod:`swesphere.forcing`).
     """
     Nlat, Nlon = grid.Nlat, grid.Nlon
     lats = np.radians(90 - np.arange(Nlat) * 180 / Nlat); lons = np.radians(np.arange(Nlon) * 360 / Nlon)

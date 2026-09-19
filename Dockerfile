@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 RUN apt-get update && apt-get install -y --no-install-recommends gfortran libfftw3-dev libblas-dev liblapack-dev && rm -rf /var/lib/apt/lists/*
 WORKDIR /work
-COPY pyproject.toml README.md /work/
+COPY pyproject.toml README.md LICENSE CHANGELOG.md /work/
 COPY src /work/src
 RUN pip install --no-cache-dir . pandas matplotlib pytest
 COPY experiments /work/experiments

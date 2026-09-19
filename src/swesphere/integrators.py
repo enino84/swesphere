@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """Time stepper for the shallow-water right-hand side: fourth-order Runge-Kutta.
 
-RK4 with the spectral filter and the polar sponge keeps every preset stationary
-for hundreds of days at dt = 120 s (see EXP-01 in ``experiments/`` for the
-stable range of dt and filter cadence).
+RK4 with the spectral filter and the polar sponge integrates every preset for hundreds of days at
+dt = 120 s. EXP-01 in ``experiments/`` measures the stable range of dt (a property of this scheme
+against the fastest gravity waves; another scheme has another range) and how the eddy amplitude
+depends on the filter cadence.
 """
 from __future__ import annotations
 
