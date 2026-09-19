@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "swesphere"
 version = "0.1.0"
-description = "Shallow-water equations on the sphere with two stationary regimes for data-assimilation testbeds"
+description = "Shallow-water equations on the sphere with three stationary regimes (waves, one jet, two jets): a model for data-assimilation testbeds"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.9"

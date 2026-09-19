@@ -4,5 +4,4 @@ cd "$(dirname "$0")"
 python exp01_stability.py
 python exp02_regimes.py
 python exp03_footprint.py
-python exp04_da_baseline.py
 python ../figures/make_figures.py

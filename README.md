@@ -1,7 +1,7 @@
 # swesphere
 
 Shallow-water equations on the sphere (spectral filter via `pyshtools`, RK4)
-with two stationary regimes for data-assimilation testbeds:
+with three stationary regimes, meant as a testbed for data assimilation (the model only; the filters live in pyteda):
 
 - `presets.waves()`, Rossby-Haurwitz, no forcing: zonal jets with weak waves.
 - `presets.two_jets()`, Galewsky jets at ±45° with zonal relaxation: sustained
@@ -34,11 +34,11 @@ it blows up in 25 days at `dt = 120 s`. See `integrators.py`, `forcing.py` and
 ```
 docker compose build
 QUICK=1 docker compose run --rm all   # smoke, ~5 min
-docker compose run --rm all           # ~4 h on one core: stability, regimes + climatologies, footprints, DA baseline, figures
+docker compose run --rm all           # ~2.5 h on one core: stability, regimes + climatologies, footprints, figures
 ```
 
 `experiments/exp01_stability.py` (Euler vs RK4 energy series), `exp02_regimes.py`
 (200-state climatology per preset with statistics and decorrelation),
 `exp03_footprint.py` (balanced vs unbalanced perturbations: advection vs gravity
-waves), `exp04_da_baseline.py` (first analysis, h observed at 10%: LETKF vs
-modified-Cholesky EnKF, 10 seeds), `figures/make_figures.py`. Results in `results/`.
+waves), `figures/make_figures.py`. Data-assimilation examples on this model are in
+`pyteda` (`pip install pyteda[swe]`). Results in `results/`.

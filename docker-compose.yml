@@ -1,8 +1,8 @@
 # swesphere: the experiments of the SWE-Python article.
 #   docker compose build
 #   QUICK=1 docker compose run --rm all      # smoke (~5 min)
-#   docker compose run --rm all              # full (~4 h, one core)
-# or one at a time: stability, regimes, footprint, da, figures, test
+#   docker compose run --rm all              # full (~2.5 h, one core)
+# or one at a time: stability, regimes, footprint, figures, test
 x-common: &common
   image: swesphere:latest
   build: .
@@ -13,6 +13,5 @@ services:
   stability: {<<: *common, command: python experiments/exp01_stability.py}
   regimes:   {<<: *common, command: python experiments/exp02_regimes.py}
   footprint: {<<: *common, command: python experiments/exp03_footprint.py}
-  da:        {<<: *common, command: python experiments/exp04_da_baseline.py}
   figures:   {<<: *common, command: python figures/make_figures.py}
   all:       {<<: *common, command: bash experiments/run_all.sh}

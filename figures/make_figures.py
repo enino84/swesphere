@@ -20,5 +20,4 @@ for name in ("waves", "one_jet", "two_jets"):
         im = ax.pcolormesh(lon_r, lat_r, F, cmap=cmap, shading="auto", vmin=(-vmax if sym else None), vmax=(vmax if sym else None)); ax.set_title(t, fontsize=10); ax.grid(alpha=.3); ax.set_xticklabels([]); ax.set_yticklabels([]); plt.colorbar(im, ax=ax, fraction=0.03, pad=0.02)
     fig.suptitle(f"preset '{name}': last climatology snapshot"); fig.tight_layout(); fig.savefig(os.path.join(FIG, f"regime_{name}.png"), dpi=130)
 f = pd.read_csv(out("EXP-03", "footprint.csv")); g = f.groupby(["preset", "kind", "T_h"])[["shift_cells", "advection_cells", "spread_cells", "peak"]].mean().round(2); g.to_csv(os.path.join(FIG, "footprint_table.csv")); print(g)
-b = pd.read_csv(out("EXP-04", "da_baseline.csv")); t = b.groupby("method")[["total", "h"]].agg(["mean", "std"]).round(3); t.to_csv(os.path.join(FIG, "da_baseline_table.csv")); print(t)
 print("figures ->", FIG)
