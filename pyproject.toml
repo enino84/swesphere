@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "swesphere"
+version = "0.1.0"
+description = "Shallow-water equations on the sphere with two stationary regimes for data-assimilation testbeds"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [{name = "Elias D. Nino-Ruiz"}]
+dependencies = ["numpy>=1.24", "scipy>=1.10", "pyshtools"]
+
+[project.optional-dependencies]
+test = ["pytest"]
+plots = ["matplotlib"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

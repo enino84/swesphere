@@ -1,0 +1,24 @@
+"""Figures of the article from results/: stability series, regime snapshots, footprints, DA baseline."""
+import os, sys, numpy as np, pandas as pd, matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "experiments"))
+from common import out, RESULTS
+from swesphere import presets
+FIG = os.path.join(RESULTS, "figures"); os.makedirs(FIG, exist_ok=True)
+d = pd.read_csv(out("EXP-01", "stability.csv"))
+fig, ax = plt.subplots(1, 3, figsize=(16, 4.5), sharey=False)
+for a, name in zip(ax, ("waves", "one_jet", "two_jets")):
+    for (sch, dt), g in d[(d.preset == name) & (~d.blew_up)].groupby(["scheme", "dt"]):
+        a.plot(g.day, g.h_std, label=f"{sch} dt={dt:g}")
+    a.set_title(name); a.set_xlabel("day"); a.set_ylabel("std of h (m)"); a.grid(alpha=.3); a.legend(fontsize=8)
+fig.suptitle("Explicit Euler grows until blow-up; RK4 with the same right-hand side is stationary"); fig.tight_layout(); fig.savefig(os.path.join(FIG, "stability.png"), dpi=130)
+for name in ("waves", "one_jet", "two_jets"):
+    S = np.load(out("EXP-02", f"clim_{name}.npy")); model, _ = presets.make(name); u, v, h = model.unpack(S[-1].astype(float)); G = model.grid
+    lats = 90 - np.arange(G.Nlat)*180/G.Nlat; lons = np.arange(G.Nlon)*360/G.Nlon; LON, LAT = np.meshgrid(lons, lats); lon_r, lat_r = np.radians(LON-180), np.radians(LAT)
+    fig = plt.figure(figsize=(15, 4.5))
+    for pos, (F, t, cmap, sym) in enumerate([(np.hypot(u, v), "wind speed (m/s)", "magma", False), (np.gradient(v, axis=1) - np.gradient(u, axis=0), "relative vorticity (grid units)", "RdBu_r", True), (h - h.mean(axis=1, keepdims=True), "h minus zonal mean (m)", "RdBu_r", True)], 1):
+        ax = fig.add_subplot(1, 3, pos, projection="mollweide"); vmax = np.nanpercentile(np.abs(F), 99.5) if sym else None
+        im = ax.pcolormesh(lon_r, lat_r, F, cmap=cmap, shading="auto", vmin=(-vmax if sym else None), vmax=(vmax if sym else None)); ax.set_title(t, fontsize=10); ax.grid(alpha=.3); ax.set_xticklabels([]); ax.set_yticklabels([]); plt.colorbar(im, ax=ax, fraction=0.03, pad=0.02)
+    fig.suptitle(f"preset '{name}': last climatology snapshot"); fig.tight_layout(); fig.savefig(os.path.join(FIG, f"regime_{name}.png"), dpi=130)
+f = pd.read_csv(out("EXP-03", "footprint.csv")); g = f.groupby(["preset", "kind", "T_h"])[["shift_cells", "advection_cells", "spread_cells", "peak"]].mean().round(2); g.to_csv(os.path.join(FIG, "footprint_table.csv")); print(g)
+b = pd.read_csv(out("EXP-04", "da_baseline.csv")); t = b.groupby("method")[["total", "h"]].agg(["mean", "std"]).round(3); t.to_csv(os.path.join(FIG, "da_baseline_table.csv")); print(t)
+print("figures ->", FIG)
