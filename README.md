@@ -17,9 +17,9 @@ scales, per_field = climatology.anomaly_scales(model, S)
 State vector `[u, v, h]` (row-major, north to south), `model.var_blocks`,
 `model.interior_mask()` (outside the polar sponge), `model.propagate(x, [t0, t1])`.
 
-The original explicit-Euler stepper is kept as `scheme="euler"` for reference;
-it blows up in 25 days at `dt = 120 s`. See `integrators.py`, `forcing.py` and
-`presets.py` for the measurements behind each choice.
+Time stepping is RK4 (`dt = 120 s` by default); EXP-01 documents the range of
+`dt` and filter cadence for which each preset stays stationary. See `forcing.py`
+and `presets.py` for the measurements behind each choice.
 
 ## Presets
 
@@ -37,8 +37,30 @@ QUICK=1 docker compose run --rm all   # smoke, ~5 min
 docker compose run --rm all           # ~2.5 h on one core: stability, regimes + climatologies, footprints, figures
 ```
 
-`experiments/exp01_stability.py` (Euler vs RK4 energy series), `exp02_regimes.py`
+`experiments/exp01_stability.py` (stable envelope: dt and filter cadence, 100 days per preset), `exp02_regimes.py`
 (200-state climatology per preset with statistics and decorrelation),
 `exp03_footprint.py` (balanced vs unbalanced perturbations: advection vs gravity
 waves), `figures/make_figures.py`. Data-assimilation examples on this model are in
 `pyteda` (`pip install pyteda[swe]`). Results in `results/`.
+
+## Using your own integrator
+
+The package publishes the right-hand side and ships RK4 as the tested stepper.
+Any other scheme can be plugged in and runs with the same filter, sponge and
+forcing:
+
+```python
+from swesphere import presets
+from swesphere.integrators import INTEGRATORS
+
+def my_step(rhs, u, v, h, dt):          # rhs(u, v, h) -> (du, dv, dh)
+    du, dv, dh = rhs(u, v, h)
+    return u + dt * du, v + dt * dv, h + dt * dh
+
+INTEGRATORS["mine"] = my_step
+model, x0 = presets.two_jets(scheme="mine")
+```
+
+`swesphere.dynamics.rhs(u, v, h, grid)` is the physics alone; `model.rhs(u, v, h)`
+adds the preset's forcing. Multistep schemes that need state from earlier steps
+can keep it in the stepper's closure.

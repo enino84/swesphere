@@ -1,19 +1,11 @@
 # -*- coding: utf-8 -*-
-"""Time steppers for the shallow-water right-hand side.
+"""Time stepper for the shallow-water right-hand side: fourth-order Runge-Kutta.
 
-``euler`` is the original scheme of the pyteda implementation. It is
-unconditionally unstable for the wave part of the system: the spectral
-filter absorbs the growth for a few weeks and the run blows up (measured:
-day 25 at dt = 120 s, day 178 at dt = 60 s). ``rk4`` with the same
-right-hand side, filter and sponge is stable (100+ days at dt = 120 s with
-a stationary energy). Use ``rk4``.
+RK4 with the spectral filter and the polar sponge keeps every preset stationary
+for hundreds of days at dt = 120 s (see EXP-01 in ``experiments/`` for the
+stable range of dt and filter cadence).
 """
 from __future__ import annotations
-
-
-def euler(rhs, u, v, h, dt):
-    du, dv, dh = rhs(u, v, h)
-    return u + dt * du, v + dt * dv, h + dt * dh
 
 
 def rk4(rhs, u, v, h, dt):
@@ -26,4 +18,4 @@ def rk4(rhs, u, v, h, dt):
             h + dt / 6 * (k1[2] + 2 * k2[2] + 2 * k3[2] + k4[2]))
 
 
-INTEGRATORS = {"euler": euler, "rk4": rk4}
+INTEGRATORS = {"rk4": rk4}

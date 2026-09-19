@@ -5,12 +5,8 @@ from common import out, RESULTS
 from swesphere import presets
 FIG = os.path.join(RESULTS, "figures"); os.makedirs(FIG, exist_ok=True)
 d = pd.read_csv(out("EXP-01", "stability.csv"))
-fig, ax = plt.subplots(1, 3, figsize=(16, 4.5), sharey=False)
-for a, name in zip(ax, ("waves", "one_jet", "two_jets")):
-    for (sch, dt), g in d[(d.preset == name) & (~d.blew_up)].groupby(["scheme", "dt"]):
-        a.plot(g.day, g.h_std, label=f"{sch} dt={dt:g}")
-    a.set_title(name); a.set_xlabel("day"); a.set_ylabel("std of h (m)"); a.grid(alpha=.3); a.legend(fontsize=8)
-fig.suptitle("Explicit Euler grows until blow-up; RK4 with the same right-hand side is stationary"); fig.tight_layout(); fig.savefig(os.path.join(FIG, "stability.png"), dpi=130)
+t = d.pivot_table(index=["dt", "filter_every"], columns="preset", values="stationary", aggfunc="first")
+t.to_csv(os.path.join(FIG, "stability_table.csv")); print("stable envelope (True = stationary over 100 days):"); print(t)
 for name in ("waves", "one_jet", "two_jets"):
     S = np.load(out("EXP-02", f"clim_{name}.npy")); model, _ = presets.make(name); u, v, h = model.unpack(S[-1].astype(float)); G = model.grid
     lats = 90 - np.arange(G.Nlat)*180/G.Nlat; lons = np.arange(G.Nlon)*360/G.Nlon; LON, LAT = np.meshgrid(lons, lats); lon_r, lat_r = np.radians(LON-180), np.radians(LAT)

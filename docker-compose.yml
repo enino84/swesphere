@@ -1,15 +1,14 @@
-# swesphere: the experiments of the SWE-Python article.
-#   docker compose build
-#   QUICK=1 docker compose run --rm all      # smoke (~5 min)
-#   docker compose run --rm all              # full (~2.5 h, one core)
-# or one at a time: stability, regimes, footprint, figures, test
+# swesphere: the experiments of the model paper.
+#   docker compose build test                # build the image once
+#   QUICK=1 docker compose run --rm all      # smoke (~3 min)
+#   docker compose run --rm all              # full (~3 h, one core)
+# or one at a time: stability, regimes, footprint, figures
 x-common: &common
   image: swesphere:latest
-  build: .
   volumes: ["./results:/work/results"]
   environment: {QUICK: "${QUICK:-0}", OMP_NUM_THREADS: "1"}
 services:
-  test:      {<<: *common, command: python -m pytest tests -q}
+  test:      {<<: *common, build: ., command: python -m pytest tests -q}
   stability: {<<: *common, command: python experiments/exp01_stability.py}
   regimes:   {<<: *common, command: python experiments/exp02_regimes.py}
   footprint: {<<: *common, command: python experiments/exp03_footprint.py}

@@ -9,14 +9,16 @@ def test_layout_and_masks():
     u, v, h = m.unpack(x); assert np.allclose(m.pack(u, v, h), x)
 
 
-def test_rk4_is_stable_where_euler_grows():
-    """Two days: with RK4 the h std barely changes; with Euler it is already growing."""
-    x = presets.waves().initial_condition("rossby")
-    m4 = presets.waves(); me = SWEModel(dt=120.0, scheme="euler")
-    s0 = m4.unpack(x)[2].std()
-    s4 = m4.unpack(m4.propagate(x, [0.0, 2 * DAY]))[2].std(); se = me.unpack(me.propagate(x, [0.0, 2 * DAY]))[2].std()
-    assert abs(s4 - s0) / s0 < 0.05
-    assert se >= s4
+def test_rk4_keeps_energy_over_two_days():
+    """Two days of the waves preset: the h std changes by less than 5%."""
+    m = presets.waves(); x = m.initial_condition("rossby")
+    s0 = m.unpack(x)[2].std(); s2 = m.unpack(m.propagate(x, [0.0, 2 * DAY]))[2].std()
+    assert abs(s2 - s0) / s0 < 0.05
+
+
+def test_unknown_scheme_is_rejected():
+    with pytest.raises(KeyError):
+        SWEModel(scheme="not-a-scheme")
 
 
 def test_two_jets_sustains_eddies():

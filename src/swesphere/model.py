@@ -72,7 +72,7 @@ class SWEModel:
                 v = sh_filter(v, self.grid, alpha=self.filter_alpha, p=self.filter_p)
                 h = sh_filter(h, self.grid, alpha=self.filter_alpha, p=self.filter_p)
             if not np.isfinite(h).all():
-                raise RuntimeError(f"SWE ({self.scheme}) blew up at step {step}/{n_steps}")
+                raise RuntimeError(f"SWE integration blew up at step {step}/{n_steps} (dt={self.dt}); reduce dt or filter more often")
         return self.pack(u, v, h)
 
     # ---- initial conditions
