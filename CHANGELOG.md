@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- EXP-03 redesigned. The first version placed the bumps at 30 N, the equator and 30 S (none on the jets of
+  `two_jets`, and geostrophic balance is not defined at the equator) and tracked the centroid of |dh| over the
+  whole sphere without periodic wrapping, which the radiated gravity waves dominate after a few hours. Now: sites
+  on the jet cores and in the quiet subtropics, centroid of dh^2 above half maximum with a circular mean in
+  longitude, hourly parcel trajectories, the steering wind averaged over the footprint, and the compact fraction.
+- Figures: one file per panel (PNG + PDF) so the manuscript composes them with LaTeX subfigures.
+
 ## 0.2.0 (2026-09-19)
 
 **The continuity equation was wrong in 0.1.0 and is fixed.** `dynamics.rhs` computed
