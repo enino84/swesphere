@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "swesphere: shallow-water equations on the rotating sphere with documented, reproducible flow regimes"
+type: software
+authors:
+  - family-names: "Nino-Ruiz"
+    given-names: "Elias D."
+    orcid: "https://orcid.org/0000-0001-7784-8163"
+    affiliation: "Applied Math and Computer Science Lab, Universidad del Norte, Barranquilla, Colombia"
+version: "0.3.0"
+date-released: "2026-09-20"
+license: MIT
+repository-code: "https://github.com/enino84/swesphere"
+url: "https://aml-cs.github.io/software/swesphere/"
+keywords:
+  - shallow-water equations
+  - sphere
+  - geophysical fluid dynamics
+  - numerical methods
+  - data assimilation
+  - reproducible experiments
+# When the article is published, add a `preferred-citation:` block with its DOI,
+# and when Zenodo mints a DOI for the release, add:  doi: 10.5281/zenodo.XXXXXXX

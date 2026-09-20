@@ -1,0 +1,18 @@
+{
+  "title": "swesphere: shallow-water equations on the rotating sphere with documented, reproducible flow regimes",
+  "upload_type": "software",
+  "description": "A compact Python implementation of the shallow-water equations on the sphere, verified against the standard test cases, with three characterized flow regimes, a state-vector interface, a pluggable time integrator and a containerized set of experiments that regenerates every reported number.",
+  "creators": [
+    {
+      "name": "Nino-Ruiz, Elias D.",
+      "affiliation": "Applied Math and Computer Science Lab, Universidad del Norte, Barranquilla, Colombia",
+      "orcid": "0000-0001-7784-8163"
+    }
+  ],
+  "license": "MIT",
+  "keywords": ["shallow-water equations", "sphere", "geophysical fluid dynamics", "numerical methods", "data assimilation", "reproducibility"],
+  "related_identifiers": [
+    {"identifier": "https://github.com/enino84/swesphere", "relation": "isSupplementTo", "scheme": "url"},
+    {"identifier": "https://aml-cs.github.io/software/swesphere/", "relation": "isDocumentedBy", "scheme": "url"}
+  ]
+}

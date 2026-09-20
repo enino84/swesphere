@@ -1,0 +1,30 @@
+# Publishes to PyPI when a GitHub release is created.
+# Uses PyPI "trusted publishing": no API token is stored in the repository.
+# One-time setup on pypi.org: Your projects -> swesphere -> Publishing -> add a GitHub publisher
+#   owner: enino84   repository: swesphere   workflow: publish.yml   environment: pypi
+name: publish
+on:
+  release:
+    types: [published]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install . pytest
+      - run: python -m pytest tests -q
+  build-and-publish:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install build
+      - run: python -m build
+      - uses: pypa/gh-action-pypi-publish@release/v1

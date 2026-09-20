@@ -74,9 +74,13 @@ if os.path.exists(out("EXP-01", "stability.csv")):
     for name in PRESETS:
         e = d[(d.preset == name) & d.stable]
         if e.empty: continue
-        fig, ax = plt.subplots(figsize=(3.4, 2.7)); ax.errorbar(e.filter_interval_s, e.eddy_mean, yerr=e.eddy_sd, fmt="none", ecolor="0.65", lw=.8, zorder=2)
+        fig, ax = plt.subplots(figsize=(5.6, 2.5)); ax.errorbar(e.filter_interval_s, e.eddy_mean, yerr=e.eddy_sd, fmt="none", ecolor="0.65", lw=.8, zorder=2)
         sc = ax.scatter(e.filter_interval_s, e.eddy_mean, c=np.log2(e.dt), cmap="viridis", s=28, zorder=3, edgecolor="k", linewidth=.3)
-        ax.set_xscale("log"); ax.set_xlabel(r"filter interval $\Delta t\,n_\mathrm{f}$ (s)"); ax.set_ylabel(r"eddy std of $h$ (m)"); ax.grid(alpha=.3, which="both", lw=.4)
+        ax.set_xscale("log"); iv = sorted(set(e.filter_interval_s))
+        keep, last = [], 0.0
+        for val in iv:                                 # drop labels that would collide on the log axis
+            if val / max(last, 1e-9) > 1.9: keep.append(val); last = val
+        ax.set_xticks(iv); ax.set_xticklabels([(f"{v:g}" if v in keep else "") for v in iv], fontsize=7.5); ax.set_xticks([], minor=True); ax.set_xlabel(r"filter interval $\Delta t\,n_\mathrm{f}$ (s)"); ax.set_ylabel(r"eddy std of $h$ (m)"); ax.grid(alpha=.3, which="both", lw=.4)
         ticks = sorted(set(np.log2(e.dt))); ticks = ticks[::max(1, len(ticks) // 5)]; cb = fig.colorbar(sc, ax=ax, pad=0.02); cb.set_ticks(ticks); cb.set_ticklabels([f"{2 ** k:g}" for k in ticks]); cb.set_label(r"$\Delta t$ (s)", fontsize=8); cb.ax.tick_params(labelsize=7)
         save(fig, f"stability_{name}")
 
@@ -106,8 +110,8 @@ if os.path.exists(out("EXP-03", "footprint.csv")):
     for name, e in f.groupby("preset"):
         jet = e[e["where"] == "jet"]; m = jet.groupby(["kind", "T_h"])[["dx_cells", "adv_dx", "steer_dx", "peak"]].mean().reset_index(); sdv = jet.groupby(["kind", "T_h"])["dx_cells"].std().reset_index()
         fig, ax = plt.subplots(figsize=(3.6, 2.7)); b = m[m.kind == "balanced"]; ax.plot(b.T_h, b.adv_dx, "k:", lw=1.2, label="parcel at the jet core"); ax.plot(b.T_h, b.steer_dx, "k--", lw=1.0, label="steering wind (footprint mean)")
-        for kind, c, mk, lab in (("balanced", "#0072B2", "o", "balanced"), ("h_only", "#D55E00", "s", "unbalanced ($h$ only)")):
-            q = m[m.kind == kind]; ax.errorbar(q.T_h, q.dx_cells, yerr=sdv[sdv.kind == kind].dx_cells.fillna(0), marker=mk, ms=4, lw=1.1, capsize=2, color=c, label=lab)
+        q = m[m.kind == "balanced"]; ax.errorbar(q.T_h, q.dx_cells, yerr=sdv[sdv.kind == "balanced"].dx_cells.fillna(0), marker="o", ms=4, lw=1.1, capsize=2, color="#0072B2", label="balanced")
+        ax.set_ylim(bottom=0)                              # the unbalanced case is omitted here: once it has radiated it is not a localized object, so its centroid is not a displacement
         ax.set_xlabel("lead time (h)"); ax.set_ylabel("eastward displacement (cells)"); ax.set_xticks(sorted(m.T_h.unique())); ax.legend(frameon=False); ax.grid(alpha=.3, lw=.4); save(fig, f"footprint_{name}")
         fig, ax = plt.subplots(figsize=(3.6, 2.7)); m2 = e.groupby(["kind", "T_h"])["peak"].mean().reset_index()
         for kind, c, mk, lab in (("balanced", "#0072B2", "o", "balanced"), ("h_only", "#D55E00", "s", "unbalanced ($h$ only)")):
