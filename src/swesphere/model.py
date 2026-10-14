@@ -60,20 +60,64 @@ class SWEModel:
         return du, dv, dh
 
     def propagate(self, x0, T, just_final_state=True):
-        if not just_final_state:
-            raise NotImplementedError
+        """Integrate the state vector from ``T[0]`` to ``T[-1]``, in seconds.
+
+        The interval must be a whole number of time steps; anything else
+        raises, rather than silently returning a state at a different time.
+        A zero-length interval returns the state unchanged.
+
+        The spherical-harmonic filter fires on **absolute model time**, every
+        ``filter_every`` steps counted from ``t = 0``, not every
+        ``filter_every`` steps of this call. Splitting a forecast into
+        several calls therefore gives the same answer as one call, which is
+        what an external driver (a data assimilation loop, say) needs: the
+        length of its forecast window is its own choice and must not change
+        the model. Anchoring the schedule to time rather than to a counter on
+        the model also keeps successive calls independent, so propagating the
+        members of an ensemble through one model object is safe.
+
+        With ``just_final_state=False`` the whole trajectory is returned, as
+        an array of shape ``(n_steps + 1, dim)`` whose first row is ``x0``.
+        That array costs ``8 * (n_steps + 1) * dim`` bytes, which at the
+        default truncation is about 200 kB per step.
+        """
+        t0, t1 = float(T[0]), float(T[-1])
+        span = t1 - t0
+        if span < 0.0:
+            raise ValueError(
+                f"propagate cannot integrate backwards: T[0]={t0:g} is after "
+                f"T[-1]={t1:g}."
+            )
+        n_steps = int(round(span / self.dt))
+        if abs(n_steps * self.dt - span) > 1e-6 * self.dt:
+            raise ValueError(
+                f"the interval {span:g} s is not a whole number of time steps "
+                f"(dt={self.dt:g} s). Ask for {n_steps * self.dt:g} s or "
+                f"{(n_steps + 1) * self.dt:g} s, or build the model with a dt "
+                f"that divides the interval you need."
+            )
+
         u, v, h = (f.copy() for f in self.unpack(np.asarray(x0, dtype=float)))
-        n_steps = max(1, int(round((float(T[-1]) - float(T[0])) / self.dt)))
+        traj = None
+        if not just_final_state:
+            traj = np.empty((n_steps + 1, self.dim), dtype=float)
+            traj[0] = self.pack(u, v, h)
+
+        # Index of each step on the absolute time grid, so the filter
+        # schedule does not depend on where this call starts.
+        k0 = int(round(t0 / self.dt))
         for step in range(1, n_steps + 1):
             u, v, h = self._step(self.rhs, u, v, h, self.dt)
             u = u * self._sponge; v = v * self._sponge
-            if step % self.filter_every == 0:
+            if (k0 + step) % self.filter_every == 0:
                 u = sh_filter(u, self.grid, alpha=self.filter_alpha, p=self.filter_p)
                 v = sh_filter(v, self.grid, alpha=self.filter_alpha, p=self.filter_p)
                 h = sh_filter(h, self.grid, alpha=self.filter_alpha, p=self.filter_p)
             if not np.isfinite(h).all():
                 raise RuntimeError(f"SWE integration blew up at step {step}/{n_steps} (dt={self.dt}); reduce dt or filter more often")
-        return self.pack(u, v, h)
+            if traj is not None:
+                traj[step] = self.pack(u, v, h)
+        return self.pack(u, v, h) if traj is None else traj
 
     # ---- initial conditions
     def initial_condition(self, kind: str = "rossby", seed: int = 0, **kw):

@@ -15,12 +15,16 @@ def build_climatology(model, x0, spinup_days, n_snapshots, every_days, verbose=F
     """
     if verbose:
         print(f"  {label} spin-up of {spinup_days:g} days", flush=True)
-    x = model.propagate(x0, [0.0, spinup_days * DAY])
+    t = 0.0
+    x = model.propagate(x0, [t, t + spinup_days * DAY]); t += spinup_days * DAY
     if verbose:
         print(f"  {label} spin-up done", flush=True)
     snaps = [x.astype(np.float32)]
+    # Each leg carries the running time, so the filter schedule of the record
+    # is the one a single uninterrupted integration would have had.
     for k in range(n_snapshots - 1):
-        x = model.propagate(x, [0.0, every_days * DAY]); snaps.append(x.astype(np.float32))
+        x = model.propagate(x, [t, t + every_days * DAY]); t += every_days * DAY
+        snaps.append(x.astype(np.float32))
         if verbose and (k + 1) % 10 == 0:
             print(f"  {label} {k + 1}/{n_snapshots} snapshots", flush=True)
     return np.array(snaps)

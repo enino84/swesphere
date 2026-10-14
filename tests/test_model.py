@@ -67,3 +67,76 @@ def test_tc2_is_steady_without_the_sponge():
 def test_perturbed_initial_condition():
     m = presets.waves(); a = m.initial_condition("rossby", seed=1, perturbed=True); b = m.initial_condition("rossby", seed=2, perturbed=True)
     assert np.isfinite(a).all() and np.abs(a - b).max() > 0 and np.abs(a - m.initial_condition("rossby")).max() > 0
+
+
+# ----------------------------------------------------------------------
+# The contract of propagate.
+#
+# These exist because version 0.3.0 broke all four: the filter counter
+# restarted on every call, so how a driver chopped up a forecast changed the
+# model; a zero-length interval advanced a step; an interval that was not a
+# whole number of steps landed somewhere else without saying so; and
+# just_final_state=False raised NotImplementedError while the documentation
+# said it returned the trajectory.
+# ----------------------------------------------------------------------
+def test_splitting_a_forecast_does_not_change_it():
+    """The length of a driver's forecast window must not change the model."""
+    m, x0 = presets.two_jets(LMAX=8)
+    total = 12 * m.dt
+    one = m.propagate(x0, [0.0, total])
+    for per_call in (1, 2, 3, 4, 6):
+        x = x0.copy()
+        for k in range(12 // per_call):
+            x = m.propagate(x, [k * per_call * m.dt, (k + 1) * per_call * m.dt])
+        assert np.array_equal(x, one), (
+            f"{per_call} step(s) per call disagrees with a single call"
+        )
+
+
+def test_the_filter_schedule_follows_absolute_time():
+    """A call that starts mid-schedule keeps the schedule of the whole run."""
+    m, x0 = presets.two_jets(LMAX=8)
+    assert m.filter_every == 3
+    # The step ending at t = 3*dt is a filter step; reaching it in a second
+    # call must still filter there.
+    one = m.propagate(x0, [0.0, 3 * m.dt])
+    half = m.propagate(x0, [0.0, 2 * m.dt])
+    two = m.propagate(half, [2 * m.dt, 3 * m.dt])
+    assert np.array_equal(one, two)
+
+
+def test_a_zero_length_interval_is_a_no_op():
+    m, x0 = presets.two_jets(LMAX=8)
+    assert np.array_equal(m.propagate(x0, [0.0, 0.0]), x0)
+    assert np.array_equal(m.propagate(x0, [500.0, 500.0]), x0)
+
+
+def test_a_partial_step_is_refused():
+    m, x0 = presets.two_jets(LMAX=8)
+    with pytest.raises(ValueError, match="whole number of time steps"):
+        m.propagate(x0, [0.0, 0.5 * m.dt])
+    with pytest.raises(ValueError, match="backwards"):
+        m.propagate(x0, [m.dt, 0.0])
+
+
+def test_just_final_state_false_returns_the_trajectory():
+    m, x0 = presets.two_jets(LMAX=8)
+    n = 5
+    traj = m.propagate(x0, [0.0, n * m.dt], just_final_state=False)
+    assert traj.shape == (n + 1, m.dim)
+    assert np.array_equal(traj[0], x0)
+    assert np.array_equal(traj[-1], m.propagate(x0, [0.0, n * m.dt]))
+
+
+def test_members_are_independent_through_one_model_object():
+    """An ensemble is propagated member by member on one model object.
+
+    Nothing in propagate may carry over from one member to the next.
+    """
+    m, _ = presets.two_jets(LMAX=8)
+    members = [m.initial_condition("rossby", seed=s, perturbed=True)
+               for s in (1, 2, 3)]
+    forward = [m.propagate(x, [0.0, 4 * m.dt]) for x in members]
+    backward = [m.propagate(x, [0.0, 4 * m.dt]) for x in reversed(members)]
+    for a, b in zip(forward, reversed(backward)):
+        assert np.array_equal(a, b)

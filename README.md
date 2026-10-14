@@ -35,6 +35,13 @@ scales, per_field = climatology.anomaly_scales(model, S)
 State vector `[u, v, h]` (row-major, north to south), `model.var_blocks`,
 `model.interior_mask()` (outside the polar sponge), `model.propagate(x, [t0, t1])`.
 
+`propagate` takes times in seconds and the interval must be a whole number of
+time steps. It returns the final state, or the whole trajectory with
+`just_final_state=False`. The spherical-harmonic filter fires on absolute model
+time, so splitting a forecast into several calls gives the same answer as one
+call: an external driver can choose its forecast window freely without changing
+the model. Pass the running time, `[t, t + dt_window]`, not `[0, dt_window]`.
+
 ## The model
 
 Equations: vector-invariant momentum and flux-form continuity,
