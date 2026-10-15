@@ -66,9 +66,17 @@ published reference solution).*
 
 Two consequences that the experiments quantify:
 
-- The scheme is second order (EXP-00: Williamson test case 2 without the sponge, l2 error of h
-  2.2e-4 at LMAX 32 and 5.5e-5 at LMAX 64 after 5 days). With the sponge the steady state of
-  that test is disturbed from the polar caps and the error in the interior is about 1e-2.
+- Without the sponge the scheme converges at second order on the grid-aligned test case 2
+  (EXP-00: l2 error of h 2.2e-4 at LMAX 32 and 5.5e-5 at LMAX 64 after 5 days). **That is not
+  the order of the configuration you get from the defaults.** With the sponge the steady state
+  is disturbed from the polar caps and the interior error is about 1e-2, and because
+  `n_pole_rows` counts rows rather than degrees, the shipped default of 10 covers everything
+  poleward of 37 degrees at LMAX 16 and 83 degrees at LMAX 128: refining the grid also retreats
+  the sponge, so a sweep at fixed `n_pole_rows` is an operational curve and not a convergence
+  test. Hold the sponge over a fixed latitude band and the observed order drops to well under
+  one, because damping the wind in a fixed region is a perturbation that does not shrink with
+  resolution. Rotate the test case as well, with `presets.williamson_tc2(alpha_deg=...)`, and
+  you measure the scheme on a flow that actually crosses the poles.
 - The dissipation acts per step, not per second, so the eddy amplitude of a regime depends on
   `dt * filter_every`. The statistics quoted for the presets hold for the defaults (EXP-01).
 
@@ -94,6 +102,50 @@ the forced presets.
 *Relative vorticity of the `two_jets` regime over nine days, starting from a spun-up state. The jet
 meanders, sheds eddies and reforms: the flow is chaotic but statistically stationary, which is what
 makes it usable as a reference.*
+
+## Verification test cases
+
+Two standard cases with a known answer, added in 0.5.0. They have no spin-up and no forcing: you
+compare against the analytic solution.
+
+```python
+from swesphere import presets
+
+# Williamson test case 2, solid-body rotation, exact and steady at every angle.
+model, x0 = presets.williamson_tc2(alpha_deg=90.0, LMAX=64)
+err = model.propagate(x0, [0.0, 5 * 86400.0]) - x0   # all of it is the model's
+
+# Williamson test case 6, the Rossby-Haurwitz wave: non-zonal and time dependent.
+model, x0 = presets.rossby_haurwitz(R=4)
+```
+
+`alpha_deg` is the angle between the flow axis and the grid's polar axis, and it is the whole
+point of the first case. At 0 the solution has `v == 0` at every point, so the meridional momentum
+equation is only ever evaluated on zero, every meridional derivative is taken along a grid line
+and the polar caps carry no flow: a scheme can look very good there and be much worse on anything
+that crosses a pole. At 90 degrees the same flow runs pole to pole, through the converging
+meridians and the polar sponge. Over six hours at LMAX 16 with no sponge the depth moves 0.08
+percent at `alpha = 0` and 1.0 percent at `alpha = 90`.
+
+The rotated case tilts the planet along with the flow, so it prescribes its own Coriolis field,
+`f = 2 Omega sin(phi')` in the tilted frame. With the grid's own `f` the tilted flow is not a
+steady solution of anything, so there is no height field that holds it and the drift you would
+measure would be the drift of a problem that was never in balance. The preset installs the right
+field; if you build the case by hand, `SWEModel.set_coriolis` and `SphereGrid.with_coriolis` are
+how you do it.
+
+```python
+from swesphere import SWEModel
+from swesphere.initial_conditions import tc2_coriolis, williamson_tc2
+
+model = SWEModel(LMAX=64)
+model.set_coriolis(tc2_coriolis(model.grid, 90.0))      # not optional
+x0 = model.pack(*williamson_tc2(model.grid, alpha_deg=90.0))
+```
+
+The Rossby-Haurwitz wave travels east at an analytic angular speed,
+`initial_conditions.rh_angular_phase_speed(grid, R=4)`, about `2.46e-6 rad/s`, once around the
+globe in 29.5 days. It tests where the model puts a structure, not only whether it kept one.
 
 ## The article's experiments (Docker)
 

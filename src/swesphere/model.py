@@ -47,6 +47,18 @@ class SWEModel:
         fs = self.field_size; s = (self.Nlat, self.Nlon)
         return x[:fs].reshape(s), x[fs:2 * fs].reshape(s), x[2 * fs:3 * fs].reshape(s)
 
+    def set_coriolis(self, f_cor):
+        """Replace the Coriolis field, in place, and return ``self``.
+
+        A thin wrapper over :meth:`SphereGrid.with_coriolis`, there because
+        the test cases that need another ``f`` are reached through the model.
+        Passing ``None`` restores the Earth's ``f = 2 Omega sin(phi)``.
+        """
+        if f_cor is None:
+            f_cor = 2.0 * self.grid.Omega * self.grid.sinL
+        self.grid = self.grid.with_coriolis(f_cor)
+        return self
+
     def interior_mask(self):
         """Boolean over one field: True outside the polar sponge (the estimated points)."""
         rows = np.repeat(np.arange(self.Nlat), self.Nlon)
@@ -126,6 +138,8 @@ class SWEModel:
             u, v, h = ics.perturbed_ic(self.grid, seed=seed, **kw) if perturbed else ics.default_ic(self.grid, **kw)
         elif kind == "tc2":
             u, v, h = ics.williamson_tc2(self.grid, **kw)
+        elif kind in ("rossby_haurwitz", "tc6"):
+            u, v, h = ics.rossby_haurwitz(self.grid, **kw)
         elif kind == "galewsky":
             u, v, h = ics.galewsky_jet(self.grid, **kw)
         else:

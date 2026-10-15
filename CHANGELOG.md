@@ -1,5 +1,70 @@
 # Changelog
 
+## 0.5.0 (2026-10-14)
+
+**Standard test cases, and the one thing the model was missing to run them.**
+Nothing here changes an existing result: every default is what it was in
+0.4.0, and `williamson_tc2(grid)` returns the same three arrays bit for bit.
+
+### Added
+
+- **`SphereGrid.with_coriolis(f)` and `SWEModel.set_coriolis(f)`.** The
+  Coriolis field was fixed at the Earth's `f = 2 Omega sin(phi)`, which is
+  right for every configuration the package shipped and wrong for the
+  standard test case that matters most for verification. `with_coriolis`
+  returns a copy of the grid carrying another field; `set_coriolis` does it
+  on the model and accepts `None` to go back to the Earth's.
+
+- **Williamson test case 2 at a rotation angle:
+  `williamson_tc2(grid, alpha_deg=...)`, `tc2_coriolis`,
+  `tc2_sin_rotated_latitude`, and the preset `presets.williamson_tc2`.**
+
+  The grid-aligned case, `alpha_deg = 0`, is a weak test and it was the only
+  one available. Its solution has `v == 0` at every point, so the meridional
+  momentum equation is only ever evaluated on zero, every meridional
+  derivative is taken along a grid line, and the polar caps carry no flow.
+  That is the configuration in which this discretization looks its best. At
+  `alpha_deg = 90` the same solid-body rotation runs pole to pole, straight
+  through the converging meridians and the polar sponge, and the solution is
+  still exact and steady, so the whole departure from the initial state is
+  the model's own error. Measured over six hours at LMAX 16 with no sponge,
+  the depth moves 0.08 percent at `alpha = 0` and 1.0 percent at
+  `alpha = 90`; add a four-row polar sponge and the rotated case moves 7.8
+  percent instead.
+
+  The rotated test is why `with_coriolis` had to exist. It does not tilt the
+  flow and leave the planet alone: it tilts the whole problem, planetary
+  rotation included, so it prescribes its own `f = 2 Omega sin(phi')` with
+  `phi'` the latitude in the tilted frame. Run the tilted flow against the
+  grid's own `f` and it is not a steady solution of anything, because the
+  balance
+
+      dB/dlam = a cos(phi) (f + zeta) v,   dB/dphi = -a (f + zeta) u
+
+  then fails its own integrability condition by
+  `-2 Omega U0 a sin(alpha) sin(lam) cos^2(phi)`: no height field whatsoever
+  holds that flow steady. The drift you would measure would be the drift of a
+  problem that was never in balance. Verified symbolically; with the tilted
+  `f` both residuals are identically zero. `presets.williamson_tc2` installs
+  the right field for you, which is the only way to use this that cannot go
+  wrong.
+
+- **Williamson test case 6, the Rossby-Haurwitz wave:
+  `rossby_haurwitz(grid, R=4, ...)`, `rh_angular_phase_speed`, the preset
+  `presets.rossby_haurwitz`, and `initial_condition("rossby_haurwitz")`
+  (also spelled `"tc6"`).** Non-zonal and time dependent, with an analytic
+  eastward angular phase speed, `2.46e-6 rad/s` for the standard `R = 4`, a
+  pattern that circles the globe in about 29.5 days. Test case 2 asks whether
+  the model leaves a structure alone; this one asks whether it carries one at
+  the right speed. The `cos^(-2)` term of the published `A(phi)` is folded
+  into the power, so nothing divides by `cos(phi)` at the poles.
+
+### Notes
+
+- These are verification cases, not regimes: no spin-up, no forcing, and a
+  known answer. The characterization presets `waves`, `one_jet` and
+  `two_jets` are unchanged.
+
 ## 0.4.0 (2026-10-13)
 
 **`propagate` now gives the same answer however a forecast is split, and does

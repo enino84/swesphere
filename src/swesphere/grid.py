@@ -23,7 +23,7 @@ Operators
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Tuple
 
 import numpy as np
@@ -100,6 +100,29 @@ class SphereGrid:
         return cls(LMAX=LMAX, Nlat=Nlat, Nlon=Nlon, a=a, Omega=Omega, g=g,
                    LON_ns=LON_ns, LAT_ns=LAT_ns, cosL=cosL, sinL=sinL,
                    f_cor=f_cor, cos_safe=cos_safe, kx=kx, dlat=dlat)
+
+    def with_coriolis(self, f_cor: np.ndarray) -> "SphereGrid":
+        """A copy of this grid carrying a different Coriolis field.
+
+        The default is the Earth's, ``f = 2 Omega sin(phi)``. Some standard
+        test cases need another one. In Williamson et al.'s test case 2 with a
+        rotation angle, the whole problem is tilted, planetary rotation
+        included, so the test prescribes ``f = 2 Omega sin(phi')`` with
+        ``phi'`` the latitude in the tilted frame. With the untilted ``f``
+        that flow is not a steady solution at all: no height field balances
+        it, because the balance is not integrable, so a model that cannot
+        change ``f`` cannot run the test.
+
+        The returned grid shares its read-only geometry with this one and only
+        replaces the Coriolis field.
+        """
+        f = np.asarray(f_cor, dtype=float)
+        expected = np.shape(self.sinL)
+        if f.shape != expected:
+            raise ValueError(
+                f"the Coriolis field must have shape {expected}, got {f.shape}."
+            )
+        return replace(self, f_cor=f)
 
 
 # ----------------------------------------------------------------------

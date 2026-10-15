@@ -7,8 +7,8 @@ authors:
     given-names: "Elias D."
     orcid: "https://orcid.org/0000-0001-7784-8163"
     affiliation: "Applied Math and Computer Science Lab, Universidad del Norte, Barranquilla, Colombia"
-version: "0.4.0"
-date-released: "2026-09-20"
+version: "0.5.0"
+date-released: "2026-10-14"
 license: MIT
 repository-code: "https://github.com/enino84/swesphere"
 url: "https://aml-cs.github.io/software/swesphere/"

@@ -45,14 +45,105 @@ class RossbyPert:
     phase: float = 0.0        # Phase offset (rad)
 
 
+def tc2_sin_rotated_latitude(grid: SphereGrid,
+                             alpha_deg: float = 0.0) -> np.ndarray:
+    """``sin`` of the latitude measured in the frame tilted by ``alpha_deg``."""
+    a = np.radians(float(alpha_deg))
+    return (-np.cos(grid.LON_ns) * grid.cosL * np.sin(a)
+            + grid.sinL * np.cos(a))
+
+
+def tc2_coriolis(grid: SphereGrid, alpha_deg: float = 0.0) -> np.ndarray:
+    """The Coriolis field test case 2 prescribes at a rotation angle.
+
+    ``f = 2 Omega sin(phi')``, the planetary rotation tilted along with
+    everything else, which is what the test case specifies. **This is not
+    optional.** Run the tilted flow against the grid's own
+    ``f = 2 Omega sin(phi)`` and it is not a steady solution of anything: the
+    balance
+
+        dB/dlam = a cos(phi) (f + zeta) v,   dB/dphi = -a (f + zeta) u
+
+    then fails its own integrability condition by
+    ``-2 Omega U0 a sin(alpha) sin(lam) cos^2(phi)``, so no height field at
+    all holds it steady, and the drift you would measure would be the drift
+    of a problem that was never in balance.
+
+    Pass it through :meth:`SphereGrid.with_coriolis`, or let
+    :func:`swesphere.presets.williamson_tc2` wire it up for you.
+    """
+    return 2.0 * grid.Omega * tc2_sin_rotated_latitude(grid, alpha_deg)
+
+
 def williamson_tc2(grid: SphereGrid, U0: float = 38.0,
-                   H0: float = 2800.0
+                   H0: float = 2800.0, alpha_deg: float = 0.0
                    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Williamson 1992 Test Case 2: solid-body rotation."""
-    u = U0 * grid.cosL
-    v = np.zeros_like(u)
-    h = H0 - (grid.a * grid.Omega * U0 + 0.5 * U0 ** 2) / grid.g * grid.sinL ** 2
+    """Williamson 1992 Test Case 2: solid-body rotation at an angle.
+
+    ``alpha_deg`` is the angle between the axis of the flow and the grid's
+    polar axis, and the default of 0 reproduces the zonally symmetric case
+    bit for bit. At 90 degrees the flow runs pole to pole.
+
+    The angle matters for verification. At ``alpha_deg = 0`` the solution has
+    ``v == 0`` everywhere, so the meridional momentum equation is never
+    evaluated on anything but zero, and the meridional derivatives are all
+    taken along grid lines. A scheme can look second-order accurate on that
+    case and be considerably worse on any flow that crosses a pole.
+
+    Exact and steady for every angle, **provided the model uses**
+    :func:`tc2_coriolis`.
+    """
+    a = np.radians(float(alpha_deg))
+    u = U0 * (grid.cosL * np.cos(a)
+              + grid.sinL * np.cos(grid.LON_ns) * np.sin(a))
+    v = -U0 * np.sin(grid.LON_ns) * np.sin(a)
+    rot = tc2_sin_rotated_latitude(grid, alpha_deg)
+    h = H0 - (grid.a * grid.Omega * U0 + 0.5 * U0 ** 2) / grid.g * rot ** 2
     return u, v, h
+
+
+def rossby_haurwitz(grid: SphereGrid, R: int = 4, omega: float = 7.848e-6,
+                    K: float = 7.848e-6, h0: float = 8000.0
+                    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Williamson 1992 Test Case 6: a Rossby-Haurwitz wave.
+
+    A wavenumber-``R`` pattern on a zonal flow, neither zonal nor steady. In
+    the non-divergent barotropic limit it travels east without changing
+    shape, at the rate :func:`rh_angular_phase_speed` gives; in the
+    shallow-water system it holds its form for weeks. Unlike test case 2 it
+    checks that the model carries a structure at the right speed, not only
+    that it leaves one alone.
+    """
+    lam = grid.LON_ns
+    c, s = grid.cosL, grid.sinL
+    a, Om, g = grid.a, grid.Omega, grid.g
+
+    u = a * omega * c + a * K * c ** (R - 1) * (R * s ** 2 - c ** 2) * np.cos(R * lam)
+    v = -a * K * R * c ** (R - 1) * s * np.sin(R * lam)
+
+    # The cos^(-2) term of A is folded into the power, so nothing divides by
+    # cos(phi) at the poles.
+    A = (0.5 * omega * (2.0 * Om + omega) * c ** 2
+         + 0.25 * K ** 2 * c ** (2 * R) * ((R + 1) * c ** 2 + (2 * R ** 2 - R - 2))
+         - 0.5 * K ** 2 * R ** 2 * c ** (2 * R - 2))
+    B = (2.0 * (Om + omega) * K / ((R + 1) * (R + 2)) * c ** R
+         * ((R ** 2 + 2 * R + 2) - (R + 1) ** 2 * c ** 2))
+    C = 0.25 * K ** 2 * c ** (2 * R) * ((R + 1) * c ** 2 - (R + 2))
+
+    h = h0 + (a ** 2 / g) * (A + B * np.cos(R * lam) + C * np.cos(2 * R * lam))
+    return u, v, h
+
+
+def rh_angular_phase_speed(grid: SphereGrid, R: int = 4,
+                           omega: float = 7.848e-6) -> float:
+    """Eastward angular phase speed of the Rossby-Haurwitz wave, rad/s.
+
+        nu = (R (3 + R) omega - 2 Omega) / ((1 + R) (2 + R))
+
+    About 2.46e-6 for the standard R = 4, a pattern that circles the globe in
+    roughly 29.5 days. Compare a measured phase against this.
+    """
+    return (R * (3.0 + R) * omega - 2.0 * grid.Omega) / ((1.0 + R) * (2.0 + R))
 
 
 def add_rossby_perturbation(
