@@ -168,13 +168,15 @@ def sh_filter(
     return pysh.expand.MakeGridDH(c, norm=1, sampling=2, lmax=L)
 
 
-def make_sponge(Nlat: int, n_pole_rows: int = 10,
+def make_sponge(Nlat: int, n_pole_rows: int = 0,
                 strength: float = 0.98) -> np.ndarray:
     """Build a multiplicative damping mask near the poles.
 
     Returns an array of shape ``(Nlat, 1)`` that is < 1 within
     ``n_pole_rows`` of each pole, ramping linearly from full damping
     (``1 - strength``) at the pole to 1 at the edge of the sponge band.
+    With ``n_pole_rows = 0``, the default from version 0.6.0, it returns all
+    ones and the sponge is inactive.
     """
     sponge = np.ones((Nlat, 1))
     for i in range(n_pole_rows):

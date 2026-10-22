@@ -1,5 +1,77 @@
 # Changelog
 
+## 0.6.0 (2026-10-22)
+
+**The polar sponge is off by default.** `n_pole_rows` changes from 10 to 0.
+This changes the answer the model gives with default settings, so read the
+migration note below before upgrading a running experiment.
+
+### Why
+
+EXP-10 of the model description paper ran 45 configurations for 120 model days
+each: three presets, three truncations, five sponge widths from ten rows down
+to none. The measurements say the sponge is not worth what it costs.
+
+- **It is not needed for stability.** All 45 runs completed the full 120 days,
+  including every sponge-free run at every preset and every resolution.
+- **It costs nothing to omit.** Cost per model day with and without it agrees
+  to within the scatter of the measurement; it multiplies two arrays per step.
+- **It destroys the convergence of the scheme.** On Williamson test case 2 at
+  a 90 degree rotation angle, with the sponge covering a fixed latitude band,
+  the observed order of the normalized l2 error of the depth is **-0.23**: the
+  error grows under grid refinement, from 8.6e-2 at LMAX 16 to 1.3e-1 at
+  LMAX 96. With no sponge the same case gives 1.11, and the grid-aligned case
+  gives 2.04.
+- **At the default resolution it removed more than half of the flow.** The
+  standard deviation of the depth anomaly outside 62.7 degrees of latitude,
+  after 120 days at LMAX 32: `two_jets` 341 m without the sponge against
+  146 m with ten rows; `waves` 34 m against 12 m. Ten rows reach 62.7 degrees
+  at LMAX 32, and the damping does not stay inside the band.
+
+What the sponge prevented was grid-scale structure in the polar rows, which
+without it reach 0.6 to 1.0 times the midlatitude amplitude in the forced
+presets against 0.004 to 0.019 with ten rows. Two things make that acceptable.
+It does not grow with resolution: `two_jets` reads 0.59, 0.60 and 0.71 at
+LMAX 32, 64 and 96. And those rows were never intended to be used;
+`interior_mask()` has always excluded them.
+
+### Migration
+
+**If you want the old behaviour, pass it explicitly:**
+
+    SWEModel(n_pole_rows=10)                 # as before 0.6.0
+    presets.two_jets(n_pole_rows=10)
+
+**Check your code for `field[model.n_pole_rows:-model.n_pole_rows]`.** That
+idiom was correct while the sponge was always on. With `n_pole_rows = 0` it
+returns an **empty array**, because `-0` is `0` and `field[0:0]` selects
+nothing, and it fails quietly: the mean and the standard deviation of an empty
+array are `nan`, so the first symptom is usually a blank plot rather than an
+error. This bit two tests inside this package.
+
+Use the new helper instead, which is correct at every width:
+
+    model.interior(field)        # the rows outside the sponge
+
+`interior_mask()` is unchanged and already returned all-True at zero width.
+
+### Added
+
+- `SWEModel.interior(field)`, the safe form of the row slice above.
+
+### Changed
+
+- `SWEModel(n_pole_rows=...)` defaults to 0 (was 10).
+- `grid.make_sponge(n_pole_rows=...)` defaults to 0 (was 10), so the two
+  agree.
+
+### Note for anyone reproducing published numbers
+
+Results generated with swesphere 0.5.0 or earlier used a ten-row sponge
+unless they said otherwise. To reproduce them, pass `n_pole_rows=10`. The
+model description paper reports both configurations and says which is which
+in every table.
+
 ## 0.5.0 (2026-10-14)
 
 **Standard test cases, and the one thing the model was missing to run them.**

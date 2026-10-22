@@ -54,9 +54,15 @@ Discretization: regular latitude-longitude (Driscoll-Healy) grid, `Nlat = 2 (LMA
 `Nlon = 4 (LMAX + 1)` (66 x 132 at the default `LMAX = 32`); exact zonal derivative by FFT,
 second-order centered meridional difference; RK4 in time (`dt = 120 s`). Dissipation: an
 exponential filter in spherical harmonics (`pyshtools`) applied every `filter_every = 3` steps,
-and a multiplicative sponge on the wind over the `n_pole_rows = 10` rows next to each pole
-(poleward of about 63 deg), which is how the model avoids the polar singularity of the grid.
-The rows under the sponge are not meant to be used (`model.interior_mask()`).
+and an optional multiplicative sponge on the wind over the `n_pole_rows` rows next to each pole.
+
+**From version 0.6.0 the sponge is off by default** (`n_pole_rows = 0`). It is not needed for
+stability: 45 configurations of three presets, three resolutions and five sponge widths all
+completed 120 model days without it. It is not free either: on the rotated test case 2 with the
+sponge over a fixed latitude band the observed order of convergence is **-0.23**, the error
+grows as the grid is refined, and at `LMAX = 32` the old ten-row default removed more than half
+of the midlatitude eddy amplitude. Pass `n_pole_rows=10` for the pre-0.6.0 behaviour, and see
+CHANGELOG.md, which includes a migration note about one idiom that breaks quietly at zero width.
 
 ![Verification](https://raw.githubusercontent.com/enino84/swesphere/main/docs/img/verification.png)
 
@@ -66,17 +72,23 @@ published reference solution).*
 
 Two consequences that the experiments quantify:
 
-- Without the sponge the scheme converges at second order on the grid-aligned test case 2
-  (EXP-00: l2 error of h 2.2e-4 at LMAX 32 and 5.5e-5 at LMAX 64 after 5 days). **That is not
-  the order of the configuration you get from the defaults.** With the sponge the steady state
-  is disturbed from the polar caps and the interior error is about 1e-2, and because
-  `n_pole_rows` counts rows rather than degrees, the shipped default of 10 covers everything
-  poleward of 37 degrees at LMAX 16 and 83 degrees at LMAX 128: refining the grid also retreats
-  the sponge, so a sweep at fixed `n_pole_rows` is an operational curve and not a convergence
-  test. Hold the sponge over a fixed latitude band and the observed order drops to well under
-  one, because damping the wind in a fixed region is a perturbation that does not shrink with
-  resolution. Rotate the test case as well, with `presets.williamson_tc2(alpha_deg=...)`, and
-  you measure the scheme on a flow that actually crosses the poles.
+- **The order depends on the flow and on the polar treatment, and only one combination is
+  second order.** Observed order of the normalized l2 error of `h` after five days on
+  Williamson test case 2, fitted over LMAX 16, 32, 64 and 96:
+
+  | rotation angle | no sponge | sponge, rows fixed | sponge, latitude fixed |
+  |---|---|---|---|
+  | 0 deg | **2.04** | 3.89 | 0.48 |
+  | 45 deg | 0.69 | 1.08 | 0.10 |
+  | 90 deg | 1.11 | 0.36 | **-0.23** |
+
+  The 3.89 is not a better result, it is a measurement of the wrong thing: with `n_pole_rows`
+  held at 10 the sponge retreats from 37 degrees of latitude at LMAX 16 to 81 at LMAX 96, so
+  refining the grid also removes the sponge and two things improve at once. Rotate the case,
+  with `presets.williamson_tc2(alpha_deg=...)`, and you measure the scheme on a flow that
+  actually crosses the poles: at 90 degrees without a sponge the error stops falling at about
+  4e-3 and is resolution independent beyond LMAX 64. We ruled out the cos floor and the filter
+  protocol as causes; the limit is reported as measured, not explained.
 - The dissipation acts per step, not per second, so the eddy amplitude of a regime depends on
   `dt * filter_every`. The statistics quoted for the presets hold for the defaults (EXP-01).
 

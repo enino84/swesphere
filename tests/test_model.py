@@ -24,7 +24,7 @@ def test_unknown_scheme_is_rejected():
 def test_two_jets_sustains_eddies():
     """Ten days are enough to see the instability grow from the 4 m bump toward tens of metres."""
     m, x0 = presets.two_jets()
-    x = m.propagate(x0, [0.0, 10 * DAY]); h = m.unpack(x)[2][m.n_pole_rows:-m.n_pole_rows]
+    x = m.propagate(x0, [0.0, 10 * DAY]); h = m.interior(m.unpack(x)[2])
     eddy = (h - h.mean(axis=1, keepdims=True)).std()
     assert 20.0 < eddy < 400.0 and np.isfinite(x).all()
 
@@ -52,7 +52,12 @@ def test_continuity_is_the_divergence_of_the_mass_flux():
     from swesphere.grid import d_lon, d_lat
     m = presets.waves(); G = m.grid; u, v, h = m.unpack(m.initial_condition("rossby")); v = v + 5.0 * np.cos(2 * G.LON_ns) * G.cosL
     dh = rhs(u, v, h, G)[2]; adv = u * d_lon(h, G) / (G.a * G.cos_safe) + v * d_lat(h, G) / G.a
-    k = m.n_pole_rows; ref = -(h * divergence(u, v, G) + adv)
+    # A fixed band, not m.n_pole_rows. What this test must exclude is the two
+    # rows at each pole where d_lat falls back to a one-sided first-order
+    # difference, which is a property of the discretization and has nothing
+    # to do with whether a sponge is switched on; tying it to n_pole_rows
+    # made it select an empty array once the default became 0.
+    k = 10; ref = -(h * divergence(u, v, G) + adv)
     assert np.abs(dh - ref)[k:-k].max() < 0.02 * np.abs(ref)[k:-k].max() and np.abs(adv)[k:-k].max() > 0.1 * np.abs(ref)[k:-k].max()
 
 
@@ -60,6 +65,8 @@ def test_tc2_is_steady_without_the_sponge():
     """Williamson test case 2: one day without the sponge keeps h within 1e-3 (l2) of the exact steady state."""
     from swesphere import diagnostics
     m = SWEModel(n_pole_rows=0); G = m.grid; x0 = m.initial_condition("tc2", U0=2 * np.pi * G.a / (12 * DAY), H0=2.94e4 / G.g)
+    # Propagated with no sponge; n_pole_rows is then set only so that
+    # error_norms(interior=True) scores away from the poles.
     x = m.propagate(x0, [0.0, DAY]); m.n_pole_rows = 10
     assert diagnostics.error_norms(m, x, x0, "h")["l2"] < 1e-3
 
@@ -140,3 +147,40 @@ def test_members_are_independent_through_one_model_object():
     backward = [m.propagate(x, [0.0, 4 * m.dt]) for x in reversed(members)]
     for a, b in zip(forward, reversed(backward)):
         assert np.array_equal(a, b)
+
+
+# ----------------------------------------------------------------------
+# 0.6.0: the sponge is off by default
+# ----------------------------------------------------------------------
+def test_the_sponge_is_off_by_default():
+    """Pinned, because this is the behaviour change of 0.6.0.
+
+    EXP-10 of the model description paper ran 45 configurations for 120 days
+    each, three presets by three resolutions by five sponge widths, and every
+    one completed, including every sponge-free run. The sponge is not needed
+    for stability; it costs nothing in time; it destroys the convergence of
+    the scheme; and at LMAX 32 with the old default of ten rows it removed
+    more than half of the midlatitude eddy amplitude.
+    """
+    m = SWEModel()
+    assert m.n_pole_rows == 0
+    assert np.all(m._sponge == 1.0)
+    assert m.interior_mask().all()
+
+
+def test_interior_returns_the_whole_field_with_no_sponge():
+    """The trap the helper exists for: field[k:-k] is empty when k is 0."""
+    m = SWEModel(LMAX=8)
+    h = m.unpack(m.initial_condition("rossby"))[2]
+    assert m.interior(h).shape == h.shape
+    assert h[m.n_pole_rows:-m.n_pole_rows].size == 0      # the old idiom
+    k = 4
+    assert SWEModel(LMAX=8, n_pole_rows=k).interior(h).shape[0] == h.shape[0] - 2 * k
+
+
+def test_the_sponge_still_works_when_asked_for():
+    m = SWEModel(LMAX=8, n_pole_rows=3)
+    assert m.n_pole_rows == 3
+    assert m._sponge[0] < 1.0 and m._sponge[-1] < 1.0
+    assert m._sponge[m.Nlat // 2] == 1.0
+    assert m.interior_mask().sum() == (m.Nlat - 6) * m.Nlon

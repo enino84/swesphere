@@ -17,7 +17,7 @@ from . import initial_conditions as ics
 class SWEModel:
     def __init__(self, LMAX: int = 32, dt: float = 120.0, scheme: str = "rk4",
                  filter_every: int = 3, filter_alpha: float = 36.0, filter_p: int = 16,
-                 n_pole_rows: int = 10, forcing=None, a: float = 6.371e6, Omega: float = 7.292e-5, g: float = 9.81):
+                 n_pole_rows: int = 0, forcing=None, a: float = 6.371e6, Omega: float = 7.292e-5, g: float = 9.81):
         self.grid = SphereGrid.make(LMAX=LMAX, a=a, Omega=Omega, g=g)
         self.dt, self.scheme = float(dt), scheme
         self.filter_every, self.filter_alpha, self.filter_p = int(filter_every), float(filter_alpha), int(filter_p)
@@ -63,6 +63,20 @@ class SWEModel:
         """Boolean over one field: True outside the polar sponge (the estimated points)."""
         rows = np.repeat(np.arange(self.Nlat), self.Nlon)
         return (rows >= self.n_pole_rows) & (rows < self.Nlat - self.n_pole_rows)
+
+    def interior(self, field):
+        """The rows of ``field`` outside the polar sponge.
+
+        Use this rather than ``field[m.n_pole_rows:-m.n_pole_rows]``. That
+        idiom was correct while the sponge was always on, and it silently
+        returns an EMPTY array when ``n_pole_rows`` is 0, because ``-0`` is
+        ``0`` and ``field[0:0]`` selects nothing. Since 0 is the default from
+        version 0.6.0, the idiom is now a trap, and one that fails quietly:
+        a mean over an empty array is nan, and a standard deviation is nan,
+        so the first sign of it is usually a plot that is blank.
+        """
+        k = self.n_pole_rows
+        return field if k == 0 else field[k:self.Nlat - k]
 
     # ---- dynamics
     def rhs(self, u, v, h):
